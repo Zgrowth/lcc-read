@@ -1,0 +1,130 @@
+{
+    "name": "vsc-plugin-lcc-reader",
+    "displayName": "LCC Reader",
+    "description": "Local code comments reader",
+    "version": "0.0.2",
+    "engines": {
+        "vscode": "^1.27.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "*"
+    ],
+    "publisher": "Zgrowth",
+    "repository": "https://github.com/Zgrowth/lcc-read.git",
+    "main": "./out/extension.js",
+    "icon": "static/images/icon.png",
+    "contributes": {
+        "configuration": [
+            {
+                "title": "本地文件配置",
+                "properties": {
+                    "lccReader.localFilesPath": {
+                        "type": "string",
+                        "default": "./novels",
+                        "description": "本地txt文件存放目录（相对于插件目录）"
+                    }
+                }
+            }
+        ],
+        "viewsContainers": {
+            "activitybar": [
+                {
+                    "id": "lccReaderSearch",
+                    "title": "小说",
+                    "icon": "./static/images/icon.svg"
+                }
+            ]
+        },
+        "views": {
+            "lccReaderSearch": [
+                {
+                    "id": "lccReader-local",
+                    "name": "本地"
+                },
+                {
+                    "id": "lccReader-chapters",
+                    "name": "章节"
+                }
+            ]
+        },
+        "menus": {
+            "view/title": [
+                {
+                    "command": "vsc-plugin-lcc-reader.command.openLocal",
+                    "when": "view == lccReader-local",
+                    "group": "navigation@1"
+                },
+                {
+                    "command": "vsc-plugin-lcc-reader.command.refreshLocal",
+                    "when": "view == lccReader-local",
+                    "group": "navigation@2"
+                }
+            ]
+        },
+        "commands": [
+            {
+                "command": "vsc-plugin-lcc-reader.command.openLocal",
+                "title": "打开",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.refreshLocal",
+                "title": "刷新",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.openPage",
+                "title": "打开页面",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.nextPage",
+                "title": "下一页",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.prevPage",
+                "title": "上一页",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.openChapter",
+                "title": "打开章节",
+                "category": "lccReaderSearch"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts"
+    },
+    "devDependencies": {
+        "@types/iconv-lite": "^0.0.1",
+        "@types/mocha": "^10.0.0",
+        "@types/node": "16.x",
+        "@types/vscode": "1.27",
+        "@typescript-eslint/eslint-plugin": "^5.42.0",
+        "@typescript-eslint/parser": "^5.42.0",
+        "@vscode/test-electron": "^2.2.0",
+        "eslint": "^8.26.0",
+        "mocha": "^10.1.0",
+        "typescript": "^4.8.4"
+    },
+    "dependencies": {
+        "iconv-lite": "^0.6.3"
+    },
+    "resolutions": {
+        "**/typescript": {
+            "registry": "https://registry.npmjs.org/"
+        },
+        "**/mocha": {
+            "registry": "https://registry.npm.taobao.org/"
+        }
+    }
+}
