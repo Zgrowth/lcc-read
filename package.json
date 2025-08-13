@@ -2,7 +2,7 @@
     "name": "vsc-plugin-lcc-reader",
     "displayName": "LCC Reader",
     "description": "Local code comments reader",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "engines": {
         "vscode": "^1.27.0"
     },
@@ -101,6 +101,7 @@
         "vscode:prepublish": "npm run compile",
         "compile": "tsc -p ./",
         "watch": "tsc -watch -p ./",
+        "pack": "vsce package",
         "pretest": "npm run compile && npm run lint",
         "lint": "eslint src --ext ts"
     },

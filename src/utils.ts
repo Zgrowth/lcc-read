@@ -371,7 +371,24 @@ export namespace utils {
 
 export namespace render {
   export function show(content: string, node?: any): void {
-    writeAndOpenFile(insertComments(splitSentences(content), getTsCode()));
+    // 提取章节标题
+    const lines = content.split('\n');
+    let chapterTitle = '';
+    let mainContent = content;
+    
+    // 如果内容以📖开头，说明是章节内容
+    if (lines[0] && lines[0].startsWith('📖 ')) {
+      chapterTitle = lines[0].replace('📖 ', '').trim();
+      // 移除标题行和空行，保留主要内容
+      mainContent = lines.slice(2).join('\n').trim();
+    }
+    
+    // 生成带有章节标题的完整内容
+    const formattedContent = chapterTitle 
+      ? `/* ========== ${chapterTitle} ========== */\n\n${insertComments(splitSentences(mainContent), getTsCode())}`
+      : insertComments(splitSentences(content), getTsCode());
+      
+    writeAndOpenFile(formattedContent);
   }
 
   function writeAndOpenFile(content: string): void {
@@ -451,37 +468,14 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-interface Admin {
-  name: string;
-  privileges: string[];
-}
-
-interface Employee {
-  name: string;
-  startDate: Date;
-}
-
-type UnknownEmployee = Employee | Admin;
-
-function printEmployeeInformation(emp: UnknownEmployee) {
-  console.log("Name: " + emp.name);
-  if ("privileges" in emp) {
-    console.log("Privileges: " + emp.privileges);
-  }
-  if ("startDate" in emp) {
-    console.log("Start Date: " + emp.startDate);
-  }
-}
-
-type Foo = string | number;
-
+/** foo 现在是字符串类型2 */
 function controlFlowAnalysisWithNever(foo: Foo) {
   if (typeof foo === "string") {
-    // 这里 foo 被收窄为 string 类型
+    /** foo 现在是字符串类型 */
   } else if (typeof foo === "number") {
-    // 这里 foo 被收窄为 number 类型
+    /** foo 现在是数字类型 */
   } else {
-    // foo 在这里是 never
+    /** foo 在这里是 never 类型 */
     const check: never = foo;
   }
 }
