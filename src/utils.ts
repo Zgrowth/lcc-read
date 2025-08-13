@@ -4,9 +4,8 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import { parseChapters, ChapterIndex } from './treeExplorer/chapter';
+import { parseChapters } from './treeExplorer/chapter';
 import { PaginationManager } from './treeExplorer/pagination';
-import { ChapterNavigator, ProgressManager } from './treeExplorer/navigation';
 import { ChapterTreeDataProvider } from './treeExplorer/chapterTreeProvider';
 
 const execAsync = promisify(exec);
@@ -28,17 +27,17 @@ export namespace utils {
       const pages = paginationManager.createPagesFromChapters(chapters);
 
       try {
-        const { ChapterTreeDataProvider } = require('./treeExplorer/chapterTreeProvider');
-        const chapterTreeProvider = new ChapterTreeDataProvider();
-        chapterTreeProvider.setCurrentFile(filePath, chapters, pages);
-
-        const vscode = require('vscode');
-        vscode.window.registerTreeDataProvider('lccReader-chapters', chapterTreeProvider);
-
-        (global as any).currentChapters = chapters;
-        (global as any).currentPages = pages;
-        (global as any).currentFilePath = filePath;
-        (global as any).currentChapterTreeProvider = chapterTreeProvider;
+        // 获取已存在的章节树提供者，如果不存在则创建新的
+        let chapterTreeProvider = (global as any).currentChapterTreeProvider;
+        
+        if (!chapterTreeProvider) {
+          // 如果全局变量中没有，创建新的（这通常不应该发生）
+          chapterTreeProvider = new ChapterTreeDataProvider();
+          (global as any).currentChapterTreeProvider = chapterTreeProvider;
+        }
+        
+        // 设置当前文件数据，这会刷新视图
+        await chapterTreeProvider.setCurrentFile(filePath, chapters, pages);
 
       } catch (error) {
         console.error(`[LCC Reader] 章节视图初始化失败:`, error);
@@ -57,215 +56,7 @@ export namespace utils {
     }
   }
 
-  export function jumpToChapter(chapterId: number): string | null {
-    const chapters = (global as any).currentChapters;
-    const pages = (global as any).currentPages;
 
-    if (!chapters || !pages) {
-      return null;
-    }
-
-    const chapter = chapters.find((c: any) => c.id === chapterId);
-    if (!chapter) {
-      return null;
-    }
-
-    const chapterContent = `📖 ${chapter.title}\n\n${chapter.content}`;
-
-    try {
-      const { ProgressManager } = require('./treeExplorer/navigation');
-      const progressManager = ProgressManager.getInstance();
-      const filePath = (global as any).currentFilePath;
-      if (filePath) {
-        progressManager.updateProgress(filePath, chapterId, chapterId);
-      }
-    } catch (error) {
-      console.error(`[LCC Reader] 更新进度失败:`, error);
-    }
-
-    return chapterContent;
-  }
-
-  export function getFirstChapter(): string | null {
-    const chapters = (global as any).currentChapters;
-    if (!chapters || chapters.length === 0) {
-      return null;
-    }
-
-    const firstChapter = chapters[0];
-
-    const chapterContent = `📖 ${firstChapter.title}\n\n${firstChapter.content}`;
-
-    try {
-      const { ProgressManager } = require('./treeExplorer/navigation');
-      const progressManager = ProgressManager.getInstance();
-      const filePath = (global as any).currentFilePath;
-      if (filePath) {
-        progressManager.updateProgress(filePath, firstChapter.id, firstChapter.id);
-      }
-    } catch (error) {
-      console.error(`[LCC Reader] 更新进度失败:`, error);
-    }
-
-    return chapterContent;
-  }
-
-  // 获取下一页内容
-  export function getNextPage(): string | null {
-    const chapters = (global as any).currentChapters;
-    const pages = (global as any).currentPages;
-    const filePath = (global as any).currentFilePath;
-
-    if (!chapters || !pages || !filePath) {
-      return null;
-    }
-
-    try {
-      const { ProgressManager } = require('./treeExplorer/navigation');
-      const progressManager = ProgressManager.getInstance();
-      const currentProgress = progressManager.getProgress(filePath);
-
-      if (!currentProgress) {
-        console.log(`[LCC Reader] 没有阅读进度，返回第一章节`);
-        return getFirstChapter();
-      }
-
-      // 查找当前章节
-      const currentChapter = chapters.find((c: any) => c.id === currentProgress.currentChapterId);
-      if (!currentChapter) {
-        console.log(`[LCC Reader] 找不到当前章节，返回第一章节`);
-        return getFirstChapter();
-      }
-
-      // 查找当前章节的所有页面
-      const chapterPages = pages.filter((p: any) => p.chapterId === currentChapter.id);
-
-      if (chapterPages.length === 1) {
-        // 单页章节，跳转到下一章节
-        const nextChapterIndex = chapters.findIndex((c: any) => c.id === currentChapter.id) + 1;
-        if (nextChapterIndex < chapters.length) {
-          const nextChapter = chapters[nextChapterIndex];
-
-          const chapterContent = `📖 ${nextChapter.title}\n\n${nextChapter.content}`;
-          progressManager.updateProgress(filePath, nextChapter.id, nextChapter.id);
-          return chapterContent;
-        } else {
-          vscode.window.showInformationMessage('已经是最后一章节');
-          return null;
-        }
-      } else {
-        // 多页章节，查找下一页
-        const currentPageIndex = chapterPages.findIndex((p: any) => p.id === currentProgress.currentPageId);
-        const nextPageIndex = currentPageIndex + 1;
-
-        if (nextPageIndex < chapterPages.length) {
-          // 还有下一页
-          const nextPage = chapterPages[nextPageIndex];
-
-          const pageContent = `📖 ${nextPage.title}\n\n${nextPage.content}`;
-          progressManager.updateProgress(filePath, currentChapter.id, nextPage.id);
-          return pageContent;
-        } else {
-          // 当前章节的最后一页，跳转到下一章节
-          const nextChapterIndex = chapters.findIndex((c: any) => c.id === currentChapter.id) + 1;
-          if (nextChapterIndex < chapters.length) {
-            const nextChapter = chapters[nextChapterIndex];
-
-            const chapterContent = `📖 ${nextChapter.title}\n\n${nextChapter.content}`;
-            progressManager.updateProgress(filePath, nextChapter.id, nextChapter.id);
-            return chapterContent;
-          } else {
-            vscode.window.showInformationMessage('已经是最后一章节');
-            return null;
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`[LCC Reader] 获取下一页失败:`, error);
-      return null;
-    }
-  }
-
-  // 获取上一页内容
-  export function getPrevPage(): string | null {
-    const chapters = (global as any).currentChapters;
-    const pages = (global as any).currentPages;
-    const filePath = (global as any).currentFilePath;
-
-    if (!chapters || !pages || !filePath) {
-      return null;
-    }
-
-    try {
-      const { ProgressManager } = require('./treeExplorer/navigation');
-      const progressManager = ProgressManager.getInstance();
-      const currentProgress = progressManager.getProgress(filePath);
-
-      if (!currentProgress) {
-        console.log(`[LCC Reader] 没有阅读进度，返回第一章节`);
-        return getFirstChapter();
-      }
-
-      // 查找当前章节
-      const currentChapter = chapters.find((c: any) => c.id === currentProgress.currentChapterId);
-      if (!currentChapter) {
-        console.log(`[LCC Reader] 找不到当前章节，返回第一章节`);
-        return getFirstChapter();
-      }
-
-      // 查找当前章节的所有页面
-      const chapterPages = pages.filter((p: any) => p.chapterId === currentChapter.id);
-
-      if (chapterPages.length === 1) {
-        // 单页章节，跳转到上一章节
-        const prevChapterIndex = chapters.findIndex((c: any) => c.id === currentChapter.id) - 1;
-        if (prevChapterIndex >= 0) {
-          const prevChapter = chapters[prevChapterIndex];
-          console.log(`[LCC Reader] 跳转到上一章节: ${prevChapter.title}`);
-
-          const chapterContent = `📖 ${prevChapter.title}\n\n${prevChapter.content}`;
-          progressManager.updateProgress(filePath, prevChapter.id, prevChapter.id);
-          return chapterContent;
-        } else {
-          console.log(`[LCC Reader] 已经是第一章节`);
-          vscode.window.showInformationMessage('已经是第一章节');
-          return null;
-        }
-      } else {
-        // 多页章节，查找上一页
-        const currentPageIndex = chapterPages.findIndex((p: any) => p.id === currentProgress.currentPageId);
-        const prevPageIndex = currentPageIndex - 1;
-
-        if (prevPageIndex >= 0) {
-          // 还有上一页
-          const prevPage = chapterPages[prevPageIndex];
-          console.log(`[LCC Reader] 跳转到上一页: ${prevPage.title}`);
-
-          const pageContent = `📖 ${prevPage.title}\n\n${prevPage.content}`;
-          progressManager.updateProgress(filePath, currentChapter.id, prevPage.id);
-          return pageContent;
-        } else {
-          // 当前章节的第一页，跳转到上一章节
-          const prevChapterIndex = chapters.findIndex((c: any) => c.id === currentChapter.id) - 1;
-          if (prevChapterIndex >= 0) {
-            const prevChapter = chapters[prevChapterIndex];
-            console.log(`[LCC Reader] 跳转到上一章节: ${prevChapter.title}`);
-
-            const chapterContent = `📖 ${prevChapter.title}\n\n${prevChapter.content}`;
-            progressManager.updateProgress(filePath, prevChapter.id, prevChapter.id);
-            return chapterContent;
-          } else {
-            console.log(`[LCC Reader] 已经是第一章节`);
-            vscode.window.showInformationMessage('已经是第一章节');
-            return null;
-          }
-        }
-      }
-    } catch (error) {
-      console.error(`[LCC Reader] 获取上一页失败:`, error);
-      return null;
-    }
-  }
 
   // 获取本地txt文件列表
   export async function getLocalTxtFiles(): Promise<string[]> {

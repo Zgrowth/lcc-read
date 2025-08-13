@@ -5,5 +5,7 @@ export enum Commands {
     "openPage" = "vsc-plugin-lcc-reader.command.openPage",
     "nextPage" = "vsc-plugin-lcc-reader.command.nextPage",
     "prevPage" = "vsc-plugin-lcc-reader.command.prevPage",
-    "openChapter" = "vsc-plugin-lcc-reader.command.openChapter"
+    "openChapter" = "vsc-plugin-lcc-reader.command.openChapter",
+    "showProgress" = "vsc-plugin-lcc-reader.command.showProgress",
+    "revealCurrentPosition" = "vsc-plugin-lcc-reader.command.revealCurrentPosition"
 };

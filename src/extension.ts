@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as commands from './commands';
+import * as progressCommands from './commands/progress';
 import { Commands } from './config';
 import { utils } from './utils';
 import { localFileDataProvider } from './treeExplorer/bookTreeDataProvider';
@@ -21,7 +22,13 @@ export async function activate(context: vscode.ExtensionContext) {
 	vscode.window.registerTreeDataProvider('lccReader-local', localFileDataProvider);
 
 	const chapterTreeProvider = new ChapterTreeDataProvider();
-	vscode.window.registerTreeDataProvider('lccReader-chapters', chapterTreeProvider);
+	const chapterTreeView = vscode.window.createTreeView('lccReader-chapters', {
+		treeDataProvider: chapterTreeProvider
+	});
+	
+	// 将章节树提供者和视图保存到全局，供其他地方使用
+	(global as any).currentChapterTreeProvider = chapterTreeProvider;
+	(global as any).currentChapterTreeView = chapterTreeView;
 
 	const prevButton = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left);
 	prevButton.text = '上一页';
@@ -37,8 +44,18 @@ export async function activate(context: vscode.ExtensionContext) {
 	const nextPageCommand = vscode.commands.registerCommand(Commands.nextPage, commands.nextPage);
 	const prevPageCommand = vscode.commands.registerCommand(Commands.prevPage, commands.prevPage);
 	const openChapterCommand = vscode.commands.registerCommand(Commands.openChapter, commands.openChapter);
+	const showProgressCommand = vscode.commands.registerCommand(Commands.showProgress, progressCommands.showProgress);
+	const revealCurrentPositionCommand = vscode.commands.registerCommand(Commands.revealCurrentPosition, commands.revealCurrentPosition);
 
-	context.subscriptions.push(openPageCommand, nextPageCommand, prevPageCommand, openChapterCommand);
+	context.subscriptions.push(
+		openPageCommand, 
+		nextPageCommand, 
+		prevPageCommand, 
+		openChapterCommand, 
+		showProgressCommand,
+		revealCurrentPositionCommand,
+		chapterTreeView
+	);
 
 	commands.updateLocalFileView();
 }

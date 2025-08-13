@@ -1,6 +1,9 @@
 // 阅读进度管理和导航系统
 
 import * as vscode from 'vscode';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import { Chapter, Page } from './chapter';
 import { PaginationManager } from './pagination';
 import { ChapterIndex } from './chapter';
@@ -24,7 +27,7 @@ export class ProgressManager {
     private readonly progressFile: string;
     
     private constructor() {
-        this.progressFile = vscode.workspace.getConfiguration('eReader').get('progressFile', '.eReader-progress.json');
+        this.progressFile = vscode.workspace.getConfiguration('lccReader').get('progressFile', '.lccReader-progress.json');
     }
     
     static getInstance(): ProgressManager {
@@ -82,17 +85,18 @@ export class ProgressManager {
     // 持久化进度到文件
     private persistProgress(): void {
         try {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (workspaceFolders && workspaceFolders.length > 0) {
-                const progressPath = vscode.Uri.file(workspaceFolders[0].uri.fsPath + '/' + this.progressFile);
-                const progressData = JSON.stringify(Array.from(this.progressMap.entries()), null, 2);
-                
-                // 使用Node.js fs模块写入文件
-                const fs = require('fs');
-                const path = require('path');
-                const fullPath = path.join(workspaceFolders[0].uri.fsPath, this.progressFile);
-                fs.writeFileSync(fullPath, progressData, 'utf8');
+            // 使用用户主目录保存进度文件，避免依赖工作区
+            const progressDir = path.join(os.homedir(), '.lccReader');
+            const fullPath = path.join(progressDir, this.progressFile);
+            
+            // 确保目录存在
+            if (!fs.existsSync(progressDir)) {
+                fs.mkdirSync(progressDir, { recursive: true });
             }
+            
+            const progressData = JSON.stringify(Array.from(this.progressMap.entries()), null, 2);
+            fs.writeFileSync(fullPath, progressData, 'utf8');
+            console.log(`[LCC Reader] 进度已保存到: ${fullPath}`);
         } catch (error) {
             console.error(`[LCC Reader] 保存进度失败: ${error}`);
         }
@@ -101,23 +105,27 @@ export class ProgressManager {
     // 从文件加载进度
     async loadProgress(): Promise<void> {
         try {
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (workspaceFolders && workspaceFolders.length > 0) {
-                const fs = require('fs');
-                const path = require('path');
-                const fullPath = path.join(workspaceFolders[0].uri.fsPath, this.progressFile);
-                
-                try {
+            // 从用户主目录加载进度文件
+            const progressDir = path.join(os.homedir(), '.lccReader');
+            const fullPath = path.join(progressDir, this.progressFile);
+            
+            try {
+                if (fs.existsSync(fullPath)) {
                     const data = fs.readFileSync(fullPath, 'utf8');
                     const progressData = JSON.parse(data);
                     this.progressMap = new Map(progressData);
-                } catch (error) {
-                    // 文件不存在，使用空进度
+                    console.log(`[LCC Reader] 已从 ${fullPath} 加载 ${this.progressMap.size} 个文件的进度`);
+                } else {
+                    console.log(`[LCC Reader] 进度文件不存在，使用空进度: ${fullPath}`);
                     this.progressMap.clear();
                 }
+            } catch (parseError) {
+                console.error(`[LCC Reader] 解析进度文件失败: ${parseError}`);
+                this.progressMap.clear();
             }
         } catch (error) {
             console.error(`[LCC Reader] 加载进度失败: ${error}`);
+            this.progressMap.clear();
         }
     }
     

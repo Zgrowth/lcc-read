@@ -2,7 +2,7 @@
     "name": "vsc-plugin-lcc-reader",
     "displayName": "LCC Reader",
     "description": "Local code comments reader",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "engines": {
         "vscode": "^1.27.0"
     },
@@ -25,6 +25,11 @@
                         "type": "string",
                         "default": "./novels",
                         "description": "本地txt文件存放目录（相对于插件目录）"
+                    },
+                    "lccReader.progressFile": {
+                        "type": "string",
+                        "default": ".lccReader-progress.json",
+                        "description": "阅读进度文件名"
                     }
                 }
             }
@@ -93,6 +98,11 @@
             {
                 "command": "vsc-plugin-lcc-reader.command.openChapter",
                 "title": "打开章节",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.showProgress",
+                "title": "显示阅读进度",
                 "category": "lccReaderSearch"
             }
         ]

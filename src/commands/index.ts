@@ -1,10 +1,54 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { TreeNode } from '../treeExplorer/treeNode';
 import { render, utils } from '../utils';
-import { Commands } from '../config';
+
 import { localFileDataProvider } from '../treeExplorer/bookTreeDataProvider';
 import { LocalFileTreeNode } from '../treeExplorer/treeNode';
-import * as path from 'path';
+
+// 辅助函数：获取当前的章节树提供者和导航器
+function getCurrentNavigator() {
+    const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+    if (!chapterTreeProvider) {
+        vscode.window.showWarningMessage('请先打开一个文件');
+        return null;
+    }
+
+    const navigator = chapterTreeProvider.getNavigator();
+    const filePath = chapterTreeProvider.getCurrentFilePath();
+    
+    if (!navigator || !filePath) {
+        vscode.window.showWarningMessage('导航器未初始化，请重新打开文件');
+        return null;
+    }
+
+    return { navigator, filePath, chapterTreeProvider };
+}
+
+// 辅助函数：刷新章节视图并滚动到当前位置
+async function refreshAndRevealChapterView() {
+    try {
+        const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+        const chapterTreeView = (global as any).currentChapterTreeView;
+        
+        if (chapterTreeProvider) {
+            // 刷新视图以更新高亮状态
+            chapterTreeProvider.refresh();
+            
+            // 等待一小段时间让视图刷新
+            setTimeout(async () => {
+                try {
+                    // 先尝试使用数据提供者的滚动方法
+                    await chapterTreeProvider.revealCurrentPosition(chapterTreeView);
+                } catch (error) {
+                    console.error(`[LCC Reader] 滚动到当前位置失败:`, error);
+                }
+            }, 100);
+        }
+    } catch (error) {
+        console.error(`[LCC Reader] 刷新章节视图失败:`, error);
+    }
+}
 
 export async function openReaderView(node: TreeNode) {
     vscode.window.showInformationMessage(`正在加载: ${node.text}`);
@@ -18,12 +62,24 @@ export async function openReaderView(node: TreeNode) {
             
             setTimeout(async () => {
                 try {
-                    const firstChapterContent = utils.getFirstChapter();
-                    if (firstChapterContent) {
-                        render.show(firstChapterContent, node);
+                    // 获取当前的导航器
+                    const navInfo = getCurrentNavigator();
+                    if (navInfo) {
+                        const { navigator, filePath } = navInfo;
+                        
+                        // 尝试继续上次阅读
+                        const currentPage = navigator.continueReading(filePath);
+                        if (currentPage) {
+                            const pageContent = `📖 ${currentPage.title}\n\n${currentPage.content}`;
+                            render.show(pageContent, node);
+                            vscode.window.showInformationMessage(`📖 继续上次阅读: ${currentPage.title}`);
+                            
+                            // 刷新章节视图并滚动到当前位置
+                            await refreshAndRevealChapterView();
+                        }
                     }
                 } catch (error) {
-                    console.error(`[LCC Reader] 自动显示第一章节失败:`, error);
+                    console.error(`[LCC Reader] 自动显示章节失败:`, error);
                 }
             }, 1000);
         } else {
@@ -78,14 +134,61 @@ export async function updateLocalFileView() {
 }
 
 export async function openPage(pageItem: any) {
-    render.show(pageItem.page.content, pageItem);
+    try {
+        const navInfo = getCurrentNavigator();
+        if (!navInfo) return;
+
+        const { navigator, filePath } = navInfo;
+
+        // 跳转到指定页面并更新进度
+        const page = navigator.jumpToPage(filePath, pageItem.page.id);
+        if (page) {
+            const pageContent = `📖 ${page.title}\n\n${page.content}`;
+            render.show(pageContent, pageItem);
+            
+            // 刷新章节视图并滚动到当前位置
+            await refreshAndRevealChapterView();
+        } else {
+            vscode.window.showErrorMessage(`无法打开页面: ${pageItem.page.title}`);
+        }
+    } catch (error) {
+        console.error(`[LCC Reader] 打开页面失败:`, error);
+        vscode.window.showErrorMessage(`打开页面失败: ${error}`);
+    }
 }
 
 export async function nextPage() {
     try {
-        const nextContent = utils.getNextPage();
-        if (nextContent) {
-            render.show(nextContent);
+        const navInfo = getCurrentNavigator();
+        if (!navInfo) return;
+
+        const { navigator, filePath } = navInfo;
+
+        // 获取当前进度
+        const currentPosition = navigator.getCurrentPosition(filePath);
+        if (!currentPosition.progress) {
+            // 没有进度，开始阅读
+            const firstPage = navigator.continueReading(filePath);
+            if (firstPage) {
+                const pageContent = `📖 ${firstPage.title}\n\n${firstPage.content}`;
+                render.show(pageContent);
+                
+                // 刷新章节视图并滚动到当前位置
+                await refreshAndRevealChapterView();
+            }
+            return;
+        }
+
+        // 获取下一页
+        const nextPage = navigator.getNextPage(filePath, currentPosition.progress.currentPageId);
+        if (nextPage) {
+            const pageContent = `📖 ${nextPage.title}\n\n${nextPage.content}`;
+            render.show(pageContent);
+            
+            // 刷新章节视图并滚动到当前位置
+            await refreshAndRevealChapterView();
+        } else {
+            vscode.window.showInformationMessage('已经是最后一页');
         }
     } catch (error) {
         console.error(`[LCC Reader] 下一页失败:`, error);
@@ -95,9 +198,36 @@ export async function nextPage() {
 
 export async function prevPage() {
     try {
-        const prevContent = utils.getPrevPage();
-        if (prevContent) {
-            render.show(prevContent);
+        const navInfo = getCurrentNavigator();
+        if (!navInfo) return;
+
+        const { navigator, filePath } = navInfo;
+
+        // 获取当前进度
+        const currentPosition = navigator.getCurrentPosition(filePath);
+        if (!currentPosition.progress) {
+            // 没有进度，开始阅读
+            const firstPage = navigator.continueReading(filePath);
+            if (firstPage) {
+                const pageContent = `📖 ${firstPage.title}\n\n${firstPage.content}`;
+                render.show(pageContent);
+                
+                // 刷新章节视图并滚动到当前位置
+                await refreshAndRevealChapterView();
+            }
+            return;
+        }
+
+        // 获取上一页
+        const prevPage = navigator.getPrevPage(filePath, currentPosition.progress.currentPageId);
+        if (prevPage) {
+            const pageContent = `📖 ${prevPage.title}\n\n${prevPage.content}`;
+            render.show(pageContent);
+            
+            // 刷新章节视图并滚动到当前位置
+            await refreshAndRevealChapterView();
+        } else {
+            vscode.window.showInformationMessage('已经是第一页');
         }
     } catch (error) {
         console.error(`[LCC Reader] 上一页失败:`, error);
@@ -107,14 +237,41 @@ export async function prevPage() {
 
 export async function openChapter(chapterItem: any) {
     try {
-        const chapterContent = utils.jumpToChapter(chapterItem.chapter.id);
-        if (chapterContent) {
-            render.show(chapterContent, chapterItem);
+        const navInfo = getCurrentNavigator();
+        if (!navInfo) return;
+
+        const { navigator, filePath } = navInfo;
+
+        // 跳转到指定章节并更新进度
+        const page = navigator.jumpToChapter(filePath, chapterItem.chapter.id);
+        if (page) {
+            const pageContent = `📖 ${page.title}\n\n${page.content}`;
+            render.show(pageContent, chapterItem);
+            
+            // 刷新章节视图并滚动到当前位置
+            await refreshAndRevealChapterView();
         } else {
             vscode.window.showErrorMessage(`无法获取章节内容: ${chapterItem.chapter.title}`);
         }
     } catch (error) {
         console.error(`[LCC Reader] 打开章节失败:`, error);
         vscode.window.showErrorMessage(`打开章节失败: ${error}`);
+    }
+}
+
+export async function revealCurrentPosition() {
+    try {
+        const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+        const chapterTreeView = (global as any).currentChapterTreeView;
+        
+        if (!chapterTreeProvider || !chapterTreeView) {
+            vscode.window.showWarningMessage('章节视图未初始化');
+            return;
+        }
+        
+        await chapterTreeProvider.revealCurrentPosition(chapterTreeView);
+    } catch (error) {
+        console.error(`[LCC Reader] 滚动到当前位置失败:`, error);
+        vscode.window.showErrorMessage(`滚动到当前位置失败: ${error}`);
     }
 }
