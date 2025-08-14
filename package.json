@@ -2,7 +2,7 @@
     "name": "vsc-plugin-lcc-reader",
     "displayName": "LCC Reader",
     "description": "Local code comments reader",
-    "version": "0.0.4",
+    "version": "0.0.5",
     "engines": {
         "vscode": "^1.27.0"
     },
