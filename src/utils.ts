@@ -275,6 +275,7 @@ function controlFlowAnalysisWithNever_${randomSuffix}(foo) {
 
   function splitSentences(str: string): string[] {
     const fixedCommentLength = 80;
+    const maxRemainingLength = 5; // 如果剩余部分 <= 5个字符，继续放在一行
     const result: string[] = [];
 
     const regex = /(.+?)(["!！。\?？…]+|[。.!?]+…*|$)/g;
@@ -287,9 +288,16 @@ function controlFlowAnalysisWithNever_${randomSuffix}(foo) {
       if (trimmedSentence.length <= fixedCommentLength) {
         result.push(trimmedSentence);
       } else {
+        // 超过最长长度时，检查是否能优化拆分
         for (let i = 0; i < trimmedSentence.length; i += fixedCommentLength) {
           const chunk = trimmedSentence.slice(i, i + fixedCommentLength);
-          if (chunk.length > 0) {
+          const remaining = trimmedSentence.slice(i + fixedCommentLength);
+          
+          // 如果剩余部分 <= maxRemainingLength，合并到当前chunk中
+          if (remaining.length > 0 && remaining.length <= maxRemainingLength) {
+            result.push(chunk + remaining);
+            break;
+          } else if (chunk.length > 0) {
             result.push(chunk);
           }
         }
