@@ -55,8 +55,8 @@ const specialChapterPatterns = [
     /^简介.*$/,
 ];
 
-// 检查是否为章节标题
-function isChapterTitle(line: string): boolean {
+// 检查是否为章节标题，支持记住已使用的模式
+function isChapterTitle(line: string, lockedPatternIndex?: number): boolean {
     const trimmedLine = line.trim();
     if (trimmedLine.length === 0) return false;
     
@@ -77,7 +77,12 @@ function isChapterTitle(line: string): boolean {
         return false;
     }
     
-    // 检查是否匹配普通章节模式
+    // 如果已经记住了某个模式，只检查这个模式
+    if (lockedPatternIndex !== undefined) {
+        return chapterPatterns[lockedPatternIndex].test(trimmedLine);
+    }
+    
+    // 如果还没记住模式，检查是否匹配任何普通章节模式
     for (const pattern of chapterPatterns) {
         if (pattern.test(trimmedLine)) {
             return true;
@@ -129,6 +134,27 @@ function splitContentIntoSegments(content: string, segmentLength: number): Conte
     return segments;
 }
 
+// 获取章节标题匹配的第一个模式索引
+function getFirstMatchingPatternIndex(line: string): number | undefined {
+    const trimmedLine = line.trim();
+    
+    // 检查特殊章节模式
+    for (const pattern of specialChapterPatterns) {
+        if (pattern.test(trimmedLine)) {
+            return -1; // 用-1表示特殊模式
+        }
+    }
+    
+    // 检查普通章节模式
+    for (let i = 0; i < chapterPatterns.length; i++) {
+        if (chapterPatterns[i].test(trimmedLine)) {
+            return i;
+        }
+    }
+    
+    return undefined;
+}
+
 // 解析章节
 export function parseChapters(content: string): Chapter[] {
     console.log(`[LCC Reader] 开始解析章节，内容长度: ${content.length}`);
@@ -137,13 +163,23 @@ export function parseChapters(content: string): Chapter[] {
     const chapters: Chapter[] = [];
     let currentChapter: Chapter | null = null;
     let lineIndex = 0;
+    let lockedPatternIndex: number | undefined = undefined; // 记住已锁定的模式
     
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const trimmedLine = line.trim();
         
         // 检查是否为章节标题
-        if (isChapterTitle(trimmedLine)) {
+        if (isChapterTitle(trimmedLine, lockedPatternIndex)) {
+            // 第一次找到章节时，记住使用的模式
+            if (lockedPatternIndex === undefined && chapters.length === 0) {
+                const matchIndex = getFirstMatchingPatternIndex(trimmedLine);
+                if (matchIndex !== undefined) {
+                    lockedPatternIndex = matchIndex;
+                    console.log(`[LCC Reader] 第一次检测到章节标题，已锁定模式索引: ${matchIndex}`);
+                }
+            }
+            
             console.log(`[LCC Reader] 发现章节标题: ${trimmedLine}`);
             
             // 保存上一个章节

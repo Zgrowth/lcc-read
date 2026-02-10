@@ -183,7 +183,7 @@ export namespace render {
   }
 
   function writeAndOpenFile(content: string): void {
-    const fileName = 'reader.ts';
+    const fileName = 'reader.js';
     const filePath = path.join(__dirname, fileName);
 
     fs.writeFile(filePath, content, { flag: "w" }, (err) => {
@@ -203,54 +203,55 @@ export namespace render {
   }
 
   function getTsCode(): string {
+    const randomSuffix = Math.floor(Math.random() * 1000000);
     return `
 /** 这是一个加法函数 */
-function add(x: number, y: number): number {
+function add_${randomSuffix}(x, y) {
   const sum = x + y;
   return sum;
 }
 
 /** 这是一个乘法函数 */
-function multiply(x: number, y: number): number {
+function multiply_${randomSuffix}(x, y) {
   const product = x * y;
   return product;
 }
 
 /** 这是一个计算阶乘的函数 */
-function factorial(n: number): number {
+function factorial_${randomSuffix}(n) {
   if (n <= 1) {
     return 1;
   }
-  return n * factorial(n - 1);
+  return n * factorial_${randomSuffix}(n - 1);
 }
 
 /** 这是一个字符串处理函数 */
-function processString(str: string): string {
+function processString_${randomSuffix}(str) {
   return str.trim().toLowerCase();
 }
 
 /** 这是一个数组排序函数 */
-function sortArray(arr: number[]): number[] {
+function sortArray_${randomSuffix}(arr) {
   return arr.sort((a, b) => a - b);
 }
 
 /** 这是一个对象合并函数 */
-function mergeObjects(obj1: any, obj2: any): any {
+function mergeObjects_${randomSuffix}(obj1, obj2) {
   return { ...obj1, ...obj2 };
 }
 
 /** 这是一个日期格式化函数 */
-function formatDate(date: Date): string {
+function formatDate_${randomSuffix}(date) {
   return date.toLocaleDateString();
 }
 
 /** 这是一个数字验证函数 */
-function isValidNumber(num: any): boolean {
+function isValidNumber_${randomSuffix}(num) {
   return typeof num === 'number' && !isNaN(num);
 }
 
 /** 这是一个URL验证函数 */
-function isValidUrl(url: string): boolean {
+function isValidUrl_${randomSuffix}(url) {
   try {
     new URL(url);
     return true;
@@ -259,15 +260,14 @@ function isValidUrl(url: string): boolean {
   }
 }
 
-/** foo 现在是字符串类型2 */
-function controlFlowAnalysisWithNever(foo: Foo) {
+/** foo 现在是字符串类型 */
+function controlFlowAnalysisWithNever_${randomSuffix}(foo) {
   if (typeof foo === "string") {
     /** foo 现在是字符串类型 */
   } else if (typeof foo === "number") {
     /** foo 现在是数字类型 */
   } else {
-    /** foo 在这里是 never 类型 */
-    const check: never = foo;
+    /** foo 不是字符串或数字类型 */
   }
 }
 `;
@@ -277,7 +277,7 @@ function controlFlowAnalysisWithNever(foo: Foo) {
     const fixedCommentLength = 80;
     const result: string[] = [];
 
-    const regex = /(.+?)(["!！。\?？]+|$)/g;
+    const regex = /(.+?)(["!！。\?？…]+|[。.!?]+…*|$)/g;
     const sentences = str.match(regex) || [];
 
     for (const sentence of sentences) {

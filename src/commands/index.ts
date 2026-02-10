@@ -25,7 +25,21 @@ function getCurrentNavigator() {
     return { navigator, filePath, chapterTreeProvider };
 }
 
-// 辅助函数：刷新章节视图并滚动到当前位置
+// 辅助函数：仅刷新章节视图（不激活侧边栏）
+async function refreshChapterViewOnly() {
+    try {
+        const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+        
+        if (chapterTreeProvider) {
+            // 只刷新视图以更新高亮状态，不调用reveal（避免激活侧边栏）
+            chapterTreeProvider.refresh();
+        }
+    } catch (error) {
+        console.error(`[LCC Reader] 刷新章节视图失败:`, error);
+    }
+}
+
+// 辅助函数：刷新章节视图并滚动到当前位置（激活侧边栏）
 async function refreshAndRevealChapterView() {
     try {
         const chapterTreeProvider = (global as any).currentChapterTreeProvider;
@@ -173,8 +187,8 @@ export async function nextPage() {
                 const pageContent = `📖 ${firstPage.title}\n\n${firstPage.content}`;
                 render.show(pageContent);
                 
-                // 刷新章节视图并滚动到当前位置
-                await refreshAndRevealChapterView();
+                // 仅刷新章节视图，不激活侧边栏
+                await refreshChapterViewOnly();
             }
             return;
         }
@@ -185,8 +199,8 @@ export async function nextPage() {
             const pageContent = `📖 ${nextPage.title}\n\n${nextPage.content}`;
             render.show(pageContent);
             
-            // 刷新章节视图并滚动到当前位置
-            await refreshAndRevealChapterView();
+            // 仅刷新章节视图，不激活侧边栏
+            await refreshChapterViewOnly();
         } else {
             vscode.window.showInformationMessage('已经是最后一页');
         }
@@ -212,8 +226,8 @@ export async function prevPage() {
                 const pageContent = `📖 ${firstPage.title}\n\n${firstPage.content}`;
                 render.show(pageContent);
                 
-                // 刷新章节视图并滚动到当前位置
-                await refreshAndRevealChapterView();
+                // 仅刷新章节视图，不激活侧边栏
+                await refreshChapterViewOnly();
             }
             return;
         }
@@ -224,8 +238,8 @@ export async function prevPage() {
             const pageContent = `📖 ${prevPage.title}\n\n${prevPage.content}`;
             render.show(pageContent);
             
-            // 刷新章节视图并滚动到当前位置
-            await refreshAndRevealChapterView();
+            // 仅刷新章节视图，不激活侧边栏
+            await refreshChapterViewOnly();
         } else {
             vscode.window.showInformationMessage('已经是第一页');
         }
