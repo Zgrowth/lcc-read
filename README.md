@@ -10,6 +10,10 @@
 - 📚 **章节导航**: 支持上一页/下一页导航
 - 🎯 **章节跳转**: 支持直接跳转到指定章节
 
+## 截图预览
+
+![](https://cdn.jsdelivr.net/gh/Zgrowth/image@master/common/image.icobftr32.webp)
+
 ## 使用方法
 
 1. 在VS Code中安装插件

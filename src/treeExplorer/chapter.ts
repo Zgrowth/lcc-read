@@ -78,7 +78,7 @@ function isChapterTitle(line: string, lockedPatternIndex?: number): boolean {
     }
     
     // 如果已经记住了某个模式，只检查这个模式
-    if (lockedPatternIndex !== undefined) {
+    if (lockedPatternIndex !== undefined && lockedPatternIndex !== -1) {
         return chapterPatterns[lockedPatternIndex].test(trimmedLine);
     }
     
