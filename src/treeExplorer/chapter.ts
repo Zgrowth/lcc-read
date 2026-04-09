@@ -1,3 +1,4 @@
+import * as vscode from 'vscode';
 // 章节相关类型定义和解析逻辑
 
 export interface Chapter {
@@ -56,39 +57,44 @@ const specialChapterPatterns = [
 ];
 
 // 检查是否为章节标题，支持记住已使用的模式
-function isChapterTitle(line: string, lockedPatternIndex?: number): boolean {
+function isChapterTitle(line: string, lockedPatternIndex?: number, customRegex?: RegExp | null): boolean {
     const trimmedLine = line.trim();
     if (trimmedLine.length === 0) return false;
-    
+
     // 排除对话内容（包含引号的行）
     if (trimmedLine.includes('"') || trimmedLine.includes('"') || trimmedLine.includes('"')) {
         return false;
     }
-    
+
     // 检查特殊章节（内容简介、作者简介、序）
     for (const pattern of specialChapterPatterns) {
         if (pattern.test(trimmedLine)) {
             return true;
         }
     }
-    
+
     // 排除过长的行（普通章节标题通常不会太长）
     if (trimmedLine.length > 30) {
         return false;
     }
-    
+
+    // 如果提供了自定义正则，优先检查自定义正则
+    if (customRegex && customRegex.test(trimmedLine)) {
+        return true;
+    }
+
     // 如果已经记住了某个模式，只检查这个模式
     if (lockedPatternIndex !== undefined && lockedPatternIndex !== -1) {
         return chapterPatterns[lockedPatternIndex].test(trimmedLine);
     }
-    
+
     // 如果还没记住模式，检查是否匹配任何普通章节模式
     for (const pattern of chapterPatterns) {
         if (pattern.test(trimmedLine)) {
             return true;
         }
     }
-    
+
     return false;
 }
 
@@ -156,21 +162,33 @@ function getFirstMatchingPatternIndex(line: string): number | undefined {
 }
 
 // 解析章节
-export function parseChapters(content: string): Chapter[] {
-    console.log(`[LCC Reader] 开始解析章节，内容长度: ${content.length}`);
-    
+export function parseChapters(content: string, customPattern?: string): Chapter[] {
+    console.log(`[LCC Reader] 开始解析章节，内容长度: ${content.length}${customPattern ? `, 自定义正则: ${customPattern}` : ''}`);
+
     const lines = content.split('\n');
     const chapters: Chapter[] = [];
     let currentChapter: Chapter | null = null;
     let lineIndex = 0;
     let lockedPatternIndex: number | undefined = undefined; // 记住已锁定的模式
-    
+
+    // 如果提供了自定义正则，添加到章节识别规则中
+    let customRegex: RegExp | null = null;
+    if (customPattern) {
+        try {
+            customRegex = new RegExp(customPattern, 'i');
+            console.log(`[LCC Reader] 自定义正则编译成功: ${customPattern}`);
+        } catch (error) {
+            console.error(`[LCC Reader] 自定义正则编译失败: ${customPattern}`, error);
+            vscode.window.showErrorMessage(`自定义正则格式错误: ${error}`);
+        }
+    }
+
     for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
         const trimmedLine = line.trim();
-        
+
         // 检查是否为章节标题
-        if (isChapterTitle(trimmedLine, lockedPatternIndex)) {
+        if (isChapterTitle(trimmedLine, lockedPatternIndex, customRegex)) {
             // 第一次找到章节时，记住使用的模式
             if (lockedPatternIndex === undefined && chapters.length === 0) {
                 const matchIndex = getFirstMatchingPatternIndex(trimmedLine);
@@ -179,21 +197,21 @@ export function parseChapters(content: string): Chapter[] {
                     console.log(`[LCC Reader] 第一次检测到章节标题，已锁定模式索引: ${matchIndex}`);
                 }
             }
-            
+
             console.log(`[LCC Reader] 发现章节标题: ${trimmedLine}`);
-            
+
             // 保存上一个章节
             if (currentChapter) {
                 currentChapter.endIndex = lineIndex - 1;
                 currentChapter.content = content.substring(
-                    currentChapter.startIndex, 
+                    currentChapter.startIndex,
                     currentChapter.endIndex
                 ).trim();
                 currentChapter.wordCount = currentChapter.content.length;
                 chapters.push(currentChapter);
                 console.log(`[LCC Reader] 保存章节: ${currentChapter.title}, 字数: ${currentChapter.wordCount}`);
             }
-            
+
             // 创建新章节
             currentChapter = {
                 id: chapters.length + 1,
@@ -204,10 +222,10 @@ export function parseChapters(content: string): Chapter[] {
                 wordCount: 0
             };
         }
-        
+
         lineIndex += line.length + 1; // +1 for newline
     }
-    
+
     // 处理最后一个章节
     if (currentChapter) {
         currentChapter.endIndex = content.length;
@@ -216,13 +234,13 @@ export function parseChapters(content: string): Chapter[] {
         chapters.push(currentChapter);
         console.log(`[LCC Reader] 保存最后章节: ${currentChapter.title}, 字数: ${currentChapter.wordCount}`);
     }
-    
+
     // 如果没有找到章节，按文本长度分段
     if (chapters.length === 0) {
         console.log(`[LCC Reader] 未找到章节标题，按文本长度分段`);
         const segmentLength = 2000; // 每段约2000字符
         const segments = splitContentIntoSegments(content, segmentLength);
-        
+
         segments.forEach((segment: ContentSegment, index: number) => {
             chapters.push({
                 id: index + 1,
@@ -234,7 +252,7 @@ export function parseChapters(content: string): Chapter[] {
             });
         });
     }
-    
+
     console.log(`[LCC Reader] 章节解析完成，共找到 ${chapters.length} 个章节`);
     return chapters;
 }

@@ -48,13 +48,14 @@ export async function activate(context: vscode.ExtensionContext) {
 	const revealCurrentPositionCommand = vscode.commands.registerCommand(Commands.revealCurrentPosition, commands.revealCurrentPosition);
 
 	context.subscriptions.push(
-		openPageCommand, 
-		nextPageCommand, 
-		prevPageCommand, 
-		openChapterCommand, 
+		openPageCommand,
+		nextPageCommand,
+		prevPageCommand,
+		openChapterCommand,
 		showProgressCommand,
 		revealCurrentPositionCommand,
-		chapterTreeView
+		chapterTreeView,
+		vscode.commands.registerCommand(Commands.reparseChapters, commands.reparseChapters)
 	);
 
 	commands.updateLocalFileView();

@@ -2,7 +2,7 @@
     "name": "vsc-plugin-lcc-reader",
     "displayName": "LCC Reader",
     "description": "一款本地txt文件阅读插件，使用代码注释的方式，便于上班摸鱼",
-    "version": "0.0.9",
+    "version": "0.0.10",
     "engines": {
         "vscode": "^1.27.0"
     },
@@ -66,6 +66,11 @@
                     "command": "vsc-plugin-lcc-reader.command.refreshLocal",
                     "when": "view == lccReader-local",
                     "group": "navigation@2"
+                },
+                {
+                    "command": "vsc-plugin-lcc-reader.command.reparseChapters",
+                    "when": "view == lccReader-chapters",
+                    "group": "navigation@1"
                 }
             ]
         },
@@ -103,6 +108,11 @@
             {
                 "command": "vsc-plugin-lcc-reader.command.showProgress",
                 "title": "显示阅读进度",
+                "category": "lccReaderSearch"
+            },
+            {
+                "command": "vsc-plugin-lcc-reader.command.reparseChapters",
+                "title": "使用正则重新解析章节",
                 "category": "lccReaderSearch"
             }
         ]

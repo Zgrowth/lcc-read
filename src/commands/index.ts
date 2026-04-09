@@ -277,15 +277,68 @@ export async function revealCurrentPosition() {
     try {
         const chapterTreeProvider = (global as any).currentChapterTreeProvider;
         const chapterTreeView = (global as any).currentChapterTreeView;
-        
+
         if (!chapterTreeProvider || !chapterTreeView) {
             vscode.window.showWarningMessage('章节视图未初始化');
             return;
         }
-        
+
         await chapterTreeProvider.revealCurrentPosition(chapterTreeView);
     } catch (error) {
         console.error(`[LCC Reader] 滚动到当前位置失败:`, error);
         vscode.window.showErrorMessage(`滚动到当前位置失败: ${error}`);
+    }
+}
+
+export async function reparseChapters() {
+    try {
+        const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+        if (!chapterTreeProvider) {
+            vscode.window.showWarningMessage('请先打开一个文件');
+            return;
+        }
+
+        const filePath = chapterTreeProvider.getCurrentFilePath();
+        if (!filePath) {
+            vscode.window.showWarningMessage('当前没有打开的文件');
+            return;
+        }
+
+        // 获取当前文件名
+        const fileName = filePath.split('/').pop() || 'unknown';
+        
+        // 提示用户输入自定义正则
+        const customPattern = await vscode.window.showInputBox({
+            prompt: `请输入章节匹配正则表达式 (文件: ${fileName})`,
+            placeHolder: '例如: ^第[0-9]+章.*$ 或 ^Chapter\\s*\\d+',
+            value: '',
+            ignoreFocusOut: true,
+            validateInput: (value: string) => {
+                if (!value || value.trim().length === 0) {
+                    return '请输入有效的正则表达式';
+                }
+                try {
+                    new RegExp(value);
+                    return null;
+                } catch (error) {
+                    return `无效的正则表达式: ${error}`;
+                }
+            }
+        });
+
+        if (!customPattern) {
+            return; // 用户取消
+        }
+
+        vscode.window.showInformationMessage('正在使用自定义正则重新解析章节...');
+
+        const success = await utils.reparseChaptersWithCustomRegex(filePath, customPattern);
+        
+        if (success) {
+            console.log(`[LCC Reader] 使用自定义正则重新解析章节成功: ${customPattern}`);
+        }
+    } catch (error) {
+        console.error(`[LCC Reader] 重新解析章节失败:`, error);
+        vscode.window.showErrorMessage(`重新解析章节失败: ${error}`);
     }
 }

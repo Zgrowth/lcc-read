@@ -16,26 +16,26 @@ const localFilesPath: string = config.get('lccReader.localFilesPath', "./novels"
 export namespace utils {
   export async function init() {
   }
-  
-  export async function readLocalTxtFile(filePath: string): Promise<string> {
+
+  export async function readLocalTxtFile(filePath: string, customPattern?: string): Promise<string> {
     try {
       const buffer = fs.readFileSync(filePath);
       const content = iconv.decode(buffer, 'utf-8');
 
-      const chapters = parseChapters(content);
+      const chapters = parseChapters(content, customPattern);
       const paginationManager = new PaginationManager();
       const pages = paginationManager.createPagesFromChapters(chapters);
 
       try {
         // 获取已存在的章节树提供者，如果不存在则创建新的
         let chapterTreeProvider = (global as any).currentChapterTreeProvider;
-        
+
         if (!chapterTreeProvider) {
           // 如果全局变量中没有，创建新的（这通常不应该发生）
           chapterTreeProvider = new ChapterTreeDataProvider();
           (global as any).currentChapterTreeProvider = chapterTreeProvider;
         }
-        
+
         // 设置当前文件数据，这会刷新视图
         await chapterTreeProvider.setCurrentFile(filePath, chapters, pages);
 
@@ -53,6 +53,52 @@ export namespace utils {
     } catch (error) {
       console.error(`[LCC Reader] 读取本地文件失败: ${filePath}`, error);
       throw error;
+    }
+  }
+
+  // 使用自定义正则重新解析章节
+  export async function reparseChaptersWithCustomRegex(filePath: string, customPattern: string): Promise<boolean> {
+    try {
+      if (!filePath) {
+        vscode.window.showWarningMessage('当前没有打开的文件');
+        return false;
+      }
+
+      const buffer = fs.readFileSync(filePath);
+      const content = iconv.decode(buffer, 'utf-8');
+
+      // 验证正则表达式
+      try {
+        new RegExp(customPattern);
+      } catch (error) {
+        vscode.window.showErrorMessage(`正则表达式格式错误: ${error}`);
+        return false;
+      }
+
+      const chapters = parseChapters(content, customPattern);
+      
+      if (chapters.length === 0) {
+        vscode.window.showWarningMessage('未找到匹配的章节，请检查正则表达式');
+        return false;
+      }
+
+      const paginationManager = new PaginationManager();
+      const pages = paginationManager.createPagesFromChapters(chapters);
+
+      const chapterTreeProvider = (global as any).currentChapterTreeProvider;
+      if (!chapterTreeProvider) {
+        vscode.window.showWarningMessage('章节视图未初始化');
+        return false;
+      }
+
+      await chapterTreeProvider.setCurrentFile(filePath, chapters, pages);
+      
+      vscode.window.showInformationMessage(`✅ 成功解析出 ${chapters.length} 个章节`);
+      return true;
+    } catch (error) {
+      console.error(`[LCC Reader] 重新解析章节失败:`, error);
+      vscode.window.showErrorMessage(`重新解析章节失败: ${error}`);
+      return false;
     }
   }
 
