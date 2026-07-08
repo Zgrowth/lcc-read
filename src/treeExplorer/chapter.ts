@@ -49,7 +49,8 @@ const chapterPatterns = [
 const specialChapterPatterns = [
     /^内容简介.*$/,
     /^作者简介.*$/,
-    /^序.*$/,
+    /^序章.*$/,
+    /^序言.*$/,
     /^目录.*$/,
     /^前言.*$/,
     /^后记.*$/,
@@ -66,7 +67,7 @@ function isChapterTitle(line: string, lockedPatternIndex?: number, customRegex?:
         return false;
     }
 
-    // 检查特殊章节（内容简介、作者简介、序）
+    // 检查特殊章节（内容简介、作者简介、序章/序言等）
     for (const pattern of specialChapterPatterns) {
         if (pattern.test(trimmedLine)) {
             return true;

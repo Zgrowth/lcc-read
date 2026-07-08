@@ -7,6 +7,7 @@ import { promisify } from 'util';
 import { parseChapters } from './treeExplorer/chapter';
 import { PaginationManager } from './treeExplorer/pagination';
 import { ChapterTreeDataProvider } from './treeExplorer/chapterTreeProvider';
+import { splitTextIntoCommentSegments } from './commentText';
 
 const execAsync = promisify(exec);
 
@@ -320,37 +321,7 @@ function controlFlowAnalysisWithNever_${randomSuffix}(foo) {
   }
 
   function splitSentences(str: string): string[] {
-    const fixedCommentLength = 80;
-    const maxRemainingLength = 5; // 如果剩余部分 <= 5个字符，继续放在一行
-    const result: string[] = [];
-
-    const regex = /(.+?)(["!！。\?？…]+|[。.!?]+…*|$)/g;
-    const sentences = str.match(regex) || [];
-
-    for (const sentence of sentences) {
-      const trimmedSentence = sentence.trim();
-      if (trimmedSentence.length === 0) continue;
-
-      if (trimmedSentence.length <= fixedCommentLength) {
-        result.push(trimmedSentence);
-      } else {
-        // 超过最长长度时，检查是否能优化拆分
-        for (let i = 0; i < trimmedSentence.length; i += fixedCommentLength) {
-          const chunk = trimmedSentence.slice(i, i + fixedCommentLength);
-          const remaining = trimmedSentence.slice(i + fixedCommentLength);
-          
-          // 如果剩余部分 <= maxRemainingLength，合并到当前chunk中
-          if (remaining.length > 0 && remaining.length <= maxRemainingLength) {
-            result.push(chunk + remaining);
-            break;
-          } else if (chunk.length > 0) {
-            result.push(chunk);
-          }
-        }
-      }
-    }
-
-    return result;
+    return splitTextIntoCommentSegments(str);
   }
 
   function insertComments(strings: string[], code: string): string {
