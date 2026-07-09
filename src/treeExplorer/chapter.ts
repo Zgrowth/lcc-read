@@ -37,6 +37,8 @@ const chapterPatterns = [
     /^第[0-9]+章.*$/,
     /^Chapter\s*[0-9]+.*$/i,
     /^[0-9]+\.\s*.*$/,
+    /^[0-9]+、.*$/,
+    /^[0-9]+\s+.*$/,
     /^第[0-9]+节.*$/,
     /^第[0-9]+回.*$/,
     /^第[0-9]+卷.*$/,
@@ -213,11 +215,11 @@ export function parseChapters(content: string, customPattern?: string): Chapter[
                 console.log(`[LCC Reader] 保存章节: ${currentChapter.title}, 字数: ${currentChapter.wordCount}`);
             }
 
-            // 创建新章节
+            // 创建新章节时，正文从标题下一行开始，避免把标题自身也当成正文内容
             currentChapter = {
                 id: chapters.length + 1,
                 title: trimmedLine,
-                startIndex: lineIndex,
+                startIndex: lineIndex + line.length + 1,
                 endIndex: 0,
                 content: '',
                 wordCount: 0

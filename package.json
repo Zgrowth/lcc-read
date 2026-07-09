@@ -2,7 +2,7 @@
     "name": "vsc-plugin-lcc-reader",
     "displayName": "LCC Reader",
     "description": "一款本地txt文件阅读插件，使用代码注释的方式，便于上班摸鱼",
-    "version": "0.0.11",
+    "version": "0.0.12",
     "engines": {
         "vscode": "^1.27.0"
     },
